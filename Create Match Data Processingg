@@ -164,22 +164,23 @@ dates  = 2009+df.index
 
 fig = go.Figure()
 for i in range(len(df.columns)):
-    x = dates
-    y = df[df.columns[i]]
+    if EquipeSauv[int(i)] not in ['Durant', 'Wilbon', 'Stephen A', 'Basketball Club of Brazil', 'Giannis', 'Home', 'Away', '36ers', 'Breakers', 'Wildcats', 'Ducks','Stephen', 'LeBron', 'Bullets', 'United', 'Sharks', 'Long-Lions', 'TBD', 'San Lorenzo', 'FC Barcelona Lassa', 'Canada', 'Paschoalotto/Bauru', 'Olimpia Milano', 'Fenerbahce Sports Club', 'USA', 'World', 'Flamengo', 'Maccabi Electra', 'Webber', 'Hill', 'Basket', 'Chuck', 'Shaq', 'FC Barcelona Regal', 'EA7 Emporio Armani Milano', 'Montepaschi Siena', 'Alba Berlin', 'Fenerbahce Ulker', 'Team Chuck', 'Team Shaq', 'Dallas', 'Armani Jeans Milano', 'Maccabi Haifa', 'Regal FC', 'CSKA', 'Caja Laboral', 'Maccabi Elite', 'Olympiacos', 'Real Madrid','Partizan', 'West', 'East', 'Sophomores', 'Rookies']         :
+        x = dates
+        y = df[df.columns[i]]
 
-    fig.add_trace(go.Scatter(
-        y=y, x=x,
-        #opacity=0.1 if i not in [0,25,14,18] else 1,
-        name=EquipeSauv[int(i)],
-        visible='legendonly'))
+        fig.add_trace(go.Scatter(
+            y=y, x=x,
+            #opacity=0.1 if i not in [0,25,14,18] else 1,
+            name=EquipeSauv[int(i)],
+            visible='legendonly' if EquipeSauv[int(i)] not in ('Jazz', 'Pistons') else None))
 
-    fig.update_layout(
-        yaxis_title='% victoires',
-        xaxis_title='année',
-        title='Evolution du pourcentage de victoire dans le temps',
-        legend_title_text='Equipes',
+        fig.update_layout(
+            yaxis_title='% victoires',
+            xaxis_title='année',
+            title='Evolution du pourcentage de victoire dans le temps',
+            legend_title_text='Equipes',
 
-    )
+        )
 
 
 print(df)
