@@ -17,7 +17,7 @@ import plotly.figure_factory as ff
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
-
+from sklearn.linear_model import LinearRegression
 
 
 def palette():
@@ -32,11 +32,6 @@ def palette():
     p8 = ['#000000', '#5d6571', '#5b2b81', '#f5f6f1']
     names = ['NBA','Los-Angeles Lakers','Miami Heat','Utah Jazz','Boston Celtics','Phoenix suns','Indiana Pacers','Sacramento Kings']
 
-##    palettes = [p1, p2, p3, p4, p5, p6, p7, p8]
-##    for i,palette in enumerate(palettes):
-##        sns.palplot(palette)
-##        plt.title(names[i]+' palette',loc='left',fontfamily='serif',fontsize=15,y=1.2)
-
     sns.palplot(p2)
     plt.title('Los-Angeles Lakers palette',loc='left',fontfamily='serif',fontsize=15,y=1.2)
     plt.show()
@@ -49,13 +44,76 @@ def palette():
 #                                                                                                                               #
 #################################################################################################################################
 def plot_taille_poids(df):
-    fig = px.scatter(df, x='Taille', y='Poids',
-                     color='PDV',
+    """Affiche le pose en fct de la taille et du poids des joueurs"""
+    df = df.rename(columns={'PDV':'Position', 'Taille':'Height', 'Poids':'Weight'})
+    fig = px.scatter(df, x='Height', y='Weight',
+                     color='Position',
                      hover_name="PLAYER",
-                     marginal_y = "box",#histogram
-                     marginal_x = "box",#histogram
-                     title='Gabarit des joueurs en fonction de leur poste')
+                     marginal_y = "box",
+                     marginal_x = "box",
+                     title='Position of the players according to their size',
+                     color_discrete_sequence=['#000000','#6e518c','#fea500'])
     return fig
+
+
+
+
+def plot_type_paniers(df, mode='bar'):
+    """Nb de paniers 3pts et 2pts en fct du poste"""
+    fig = go.Figure()
+
+    df = df.rename(columns={'FG%':'2 points field goals', '3P%':'3 points field goals'})
+    postes = ['G','F','C']
+    colors = ['#542583','#000000','#fea500']
+    caracs = ['2 points field goals','3 points field goals']
+    #caracs = ['FG%','3P%']
+    
+    for i,p in enumerate(postes):
+        df_plot = df[df['PDV'] == p]
+
+        if mode == 'bar':
+            x = [caracs[0], caracs[1]]
+            y = [df_plot[caracs[0]].mean(), df_plot[caracs[1]].mean()]
+        elif mode == 'box':
+            x = [caracs[0] for _ in range(df_plot.shape[0])]+[caracs[1] for _ in range(df_plot.shape[0])]
+            y = list(df_plot[caracs[0]])+list(df_plot[caracs[1]])
+            
+        fig.add_trace(go.Bar(
+            y=y, x=x,
+            name=p,
+            marker_color=colors[i]))
+
+    fig.update_layout(
+        yaxis_title='Average number',
+        boxmode='group',
+        title='Average number of 2 and 3 point baskets by position'
+    )
+     
+    return fig
+
+
+#################################################################################################################################
+#                                                                                                                               #
+#                                                   ANALYSE GLOBALE JOUEUERS NBA                                                #
+#                                                                                                                               #
+#################################################################################################################################
+
+def map_plot(df):
+    df_count = df.groupby(['country','iso_alpha']).size()
+
+    df_viz = pd.DataFrame()
+    df_viz['country'] = [i[0] for i in df_count.index]
+    df_viz['iso_alpha'] = [i[1] for i in df_count.index]
+    df_viz['count'] = list(df_count.apply(lambda x:np.log(x)))
+    df_viz['taille'] = list(df.groupby('iso_alpha')['Taille'].mean())
+
+    fig = px.choropleth(df_viz, locations="iso_alpha",
+                        color="count",
+                        hover_name="country",
+                        color_continuous_scale=px.colors.sequential.Plasma,
+                        title="Origin of the players (logarithmic scale)")
+    return fig
+
 
 def taille_distribution(df):
     fig = px.histogram(df['Taille'], nbins=50)
@@ -85,7 +143,7 @@ def taille_distribution(df):
             line=dict(color="#542583"),
             fill='tozeroy',
             fillcolor='rgba(84, 37, 131, 0.5)',
-            name='Distribution de la taille des hommes',
+            name="Men's height",
         ))
     fig.add_trace(
         go.Scatter(
@@ -93,97 +151,177 @@ def taille_distribution(df):
             line=dict(color="#fea500"),
             fill='tozeroy',
             fillcolor = 'rgba(254, 165, 0, 0.5)',
-            name='Distribution de la taille des joueurs de la NBA',
+            name='Height of NBA players',
         ))
-
-    # Seaborn
-    sns.lineplot(x_pdf, y_pdf, lw=2, label='pdf', color='red')                                                   
-    sns.lineplot(x_pdf2, y_pdf2, lw=2, label='pdf2', color='blue')
-    sns.histplot(df['Taille']*100, kde=False, stat='density', label='samples', color='lightblue')
-    plt.legend()
-    #plt.show()
-
+    fig.update_layout(
+        title='Height comparison between men and NBA players',
+        xaxis_title='Height (cm)',
+    )
+    fig.update_layout(legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    ))
+    
     return fig
     
 
-def plot_type_paniers(df):
-    """Nb de paniers 3pts et 2pts en fct du poste"""
+
+def players_comparaison(df, players=[]):
+    """Radar plot des caractéristiques des joueurs"""
+    caracs = ['GP',"3PM","FGM",'REB','AST','STL','TOV']
+    df_plot = df[caracs+['PLAYER']]
+    df_hover = df[caracs+['PLAYER']]
+    for c in caracs:
+        df_plot[c] = df_plot[c]/df_plot[c].max()
+
+    colors = ["#542583","#fea500"]
+    fillcolors = ["rgba(84, 37, 131, 0.5)","rgba(254, 165, 0, 0.5)"]
     fig = go.Figure()
-
-    postes = list(df['PDV'].unique())
-    palette = ['#000000', '#542583', '#fea500', '#6e518c', '#fdc42f', '#8a6bad', '#acacac', '#f4f3eb']
-    colors = ['#000000','#542583','#fea500']
-    caracs = ['FG%','3P%']#"%FGA\n3PT"
-    for i,p in enumerate(postes):
-        df_plot = df[df['PDV'] == p]
-        fig.add_trace(go.Box(
-            y=list(df_plot[caracs[0]])+list(df_plot[caracs[1]]),
-            x=[caracs[0] for _ in range(df_plot.shape[0])]+[caracs[1] for _ in range(df_plot.shape[0])],
-            name=p,
-            marker_color=colors[i]))
+    for i,p in enumerate(players):
+        fig.add_trace(go.Scatterpolar(
+                r=df_plot[df_plot['PLAYER'] == p].iloc[0,:-1],
+                theta=caracs,
+                fill='toself',
+                line=dict(color=colors[i]),
+                fillcolor=fillcolors[i],
+                name=p,
+                hoverinfo="text",
+                hovertext=df_hover[df_hover['PLAYER'] == p].iloc[0,:-1],
+        ))
     fig.update_layout(
-        yaxis_title='normalized moisture',
-        boxmode='group'
+      polar=dict(
+        radialaxis=dict(
+          visible=True,
+          range=[0, 1]
+        )),
+      xlegend=1,
+      ylegend=1,
+      showlegend=True,
+      title='Player comparison'
     )
-
-##    ANALYSE :
-##        - Le C est le meilleur buteur à 2pts mais le pire à 3pts
-##        - Le G c'est legèrement l'inverse
-##        - Le F est équilibré
-     
+    fig.for_each_trace(lambda t: t.update(hoveron='points'))
+    
     return fig
 
 
-#################################################################################################################################
-#                                                                                                                               #
-#                                                   ANALYSE GLOBALE JOUEUERS NBA                                                #
-#                                                                                                                               #
-#################################################################################################################################
 
-def map_plot(df):
-    df_count = df.groupby(['country','iso_alpha']).size()
+def pts2(df):
+    attempted = df['FGA']
+    scored = df['FGM']
 
-    df_viz = pd.DataFrame()
-    df_viz['country'] = [i[0] for i in df_count.index]
-    df_viz['iso_alpha'] = [i[1] for i in df_count.index]
-    df_viz['count'] = list(df_count.apply(lambda x:np.log(x)))
-    df_viz['taille'] = list(df.groupby('iso_alpha')['Taille'].mean())
+    # make the linear regression
+    X = attempted.values.reshape(-1,1)
+    y = scored
+    regression = LinearRegression()
+    regression.fit(X,y)
 
-    fig = px.choropleth(df_viz, locations="iso_alpha",
-                        color="count",
-                        hover_name="country",
-                        color_continuous_scale=px.colors.sequential.Plasma)
+    x_range = np.linspace(X.min(), X.max(), 100)
+    y_range = regression.predict(x_range.reshape(-1, 1))
+
+    # identifying best shooters
+    df['best_worst'] = (scored-attempted*regression.coef_)
+    df=df.sort_values(by=['best_worst'])
+
+    df['best_worst'][:5]=-100 #set the five worst to -1 -> in blue on the graphic
+    df['best_worst'][-5:]=100 #set the five best to 1 -> in yellow on the graphic
+    df['best_worst'][5:-5]=0 #set the other to 0
+
+    df = df.rename(columns={'FGA': 'Field Goals Attempted Per Match', 'FGM': 'Field Goals Scored Per Match'})
+    # plot the graph
+    fig = px.scatter(df, x='Field Goals Attempted Per Match', y='Field Goals Scored Per Match', hover_name='PLAYER',title=f"Average accuracy of 2-point baskets : {round(regression.coef_[0],2)}",template="plotly_white",color='best_worst')
+    fig.add_traces(go.Scatter(x=x_range, y=y_range, name=' '))
+    fig.update_layout(showlegend=False)
+    fig.update_coloraxes(showscale=False)
     return fig
 
 
-def histogram_tailles(df):
-    """Deux courbed de distribution:
-        - Taille des joueurs de la nba
-        - Taille des hommes (dans la même tranche d'âge)"""
-    pass
 
+def pts3(df):
+    attempted = df['3PA']
+    scored = df['3PM']
+
+    # make the linear regression
+    X = attempted.values.reshape(-1,1)
+    y = scored
+    regression = LinearRegression()
+    regression.fit(X,y)
+
+    x_range = np.linspace(X.min(), X.max(), 100)
+    y_range = regression.predict(x_range.reshape(-1, 1))
+
+    # identifying best shooters
+    df['best_worst'] = (scored-attempted*regression.coef_)
+    df=df.sort_values(by=['best_worst'])
+
+    print(regression.coef_)
+    df['best_worst'][:5]=-100 #set the five worst to -1
+    df['best_worst'][-5:]=100 #set the five best to 1
+    df['best_worst'][5:-5]=0 #set the other to 0
+
+    df = df.rename(columns={'3PA': '3 Points Shots Attempted Per Match', '3PM': '3 Points Shots Scored Per Match'})
+    # plot the graph
+    fig = px.scatter(df,x='3 Points Shots Attempted Per Match', y='3 Points Shots Scored Per Match', hover_name='PLAYER',title=f"Average accuracy of 3-point baskets : {round(regression.coef_[0],2)}",template="plotly_white",color='best_worst')
+    fig.add_traces(go.Scatter(x=x_range, y=y_range, name=' '))
+    fig.update_layout(showlegend=False)
+    fig.update_coloraxes(showscale=False)
+    return fig
+
+
+
+    
 #################################################################################################################################
 #                                                                                                                               #
-#                                                           STATISTIQUES                                                        #
+#                                                               PCA                                                             #
 #                                                                                                                               #
 #################################################################################################################################
 def pca_plot(df):
-    print(df.dtypes.to_string())
     pca = make_pipeline(StandardScaler(), PCA(n_components=2))
     
-    x = df[["FG%","3P%","FT%","+/-","AST%","OREB%","DREB%","REB%","%FGA\n2PT","%FGA\n3PT","%PTS","%REB","%TOV","%STL","%BLK","%PF","3FGM\n%UAST"]]
+    x = df[["FG%","3PM","FGM","+/-","AST%","OREB%","DREB%","REB%","%FGA\n2PT","%FGA\n3PT","%PTS","%REB","%TOV","%STL","%BLK","%PF","3FGM\n%UAST"]]
 
     x = list(pca.fit_transform(np.array(x)))
-    
-    fig = px.scatter(x=[i[0] for i in x], y=[i[1] for i in x],
-                     color=df.index,
-                     hover_name=df["PLAYER"],
-                     title='Some awesome visualization')
+    df['rank'] = df.index
+    fig = px.scatter(df, x=[i[0] for i in x], y=[i[1] for i in x],
+                     color="rank",
+                     hover_name="PLAYER",
+                     title="Players' statistics")
 
     #fig.layout.paper_bgcolor = '#FFFFFF'
     #fig.layout.plot_bgcolor = '#FFFFFF'
     return fig
 
+
+#################################################################################################################################
+#                                                                                                                               #
+#                                                               MATCHS                                                          #
+#                                                                                                                               #
+#################################################################################################################################
+def plot_match(df):
+    dates = 2009+df.index
+    fig = go.Figure()
+    for i in df.columns:
+        if i not in ['Durant', 'Wilbon', 'Stephen A', 'Basketball Club of Brazil', 'Giannis', 'Home', 'Away', '36ers', 'Breakers', 'Wildcats', 'Ducks','Stephen', 'LeBron', 'Bullets', 'United', 'Sharks', 'Long-Lions', 'TBD', 'San Lorenzo', 'FC Barcelona Lassa', 'Canada', 'Paschoalotto/Bauru', 'Olimpia Milano', 'Fenerbahce Sports Club', 'USA', 'World', 'Flamengo', 'Maccabi Electra', 'Webber', 'Hill', 'Basket', 'Chuck', 'Shaq', 'FC Barcelona Regal', 'EA7 Emporio Armani Milano', 'Montepaschi Siena', 'Alba Berlin', 'Fenerbahce Ulker', 'Team Chuck', 'Team Shaq', 'Dallas', 'Armani Jeans Milano', 'Maccabi Haifa', 'Regal FC', 'CSKA', 'Caja Laboral', 'Maccabi Elite', 'Olympiacos', 'Real Madrid','Partizan', 'West', 'East', 'Sophomores', 'Rookies']  :
+            x = dates
+            y = df[i]
+
+            fig.add_trace(go.Scatter(
+                y=y, x=x,
+                #opacity=0.1 if i not in [0,25,14,18] else 1,
+                name=i,
+                visible=None if i in ('Nets', 'Rockets') else 'legendonly'))
+
+            fig.update_layout(
+                yaxis_title='% wins',
+                xaxis_title='year',
+                title='Evolution of the percentage of wins over time',
+                legend_title_text='Teams',
+
+            )
+
+    return fig
 
 
 #################################################################################################################################
@@ -196,13 +334,28 @@ if __name__ == '__main__':
 
     df = pd.read_csv('datasets/df_players_merged.csv').drop(["Unnamed: 0"], axis=1)
 
-    palette()
+    #palette()
 
-    #fig = pca_plot(df)
-    #fig = plot_taille_poids(df_players)
-    #fig = map_plot(df_players)
-    #fig = plot_type_paniers(df)
-    fig = taille_distribution(df)
+##    fig = pca_plot(df)
+##    fig.show()
+    fig = plot_taille_poids(df)
+    fig.show()
+##    fig = map_plot(df)
+##    fig.show()
+##    fig = plot_type_paniers(df)
+##    fig.show()
+##    fig = taille_distribution(df)
+##    fig.show()
+##    fig = pts2(df)
+##    fig.show()
+##    fig = pts3(df)
+##    fig.show()    
+##    print(df[['PLAYER','PDV']][:10])
+##    fig = players_comparaison(df, players=['Kevin Durant', 'Stephen Curry','Trae Young'])
+##    fig.show()
+
+    df_match = pd.read_csv('datasets/df_matchs.csv').drop(["Unnamed: 0"], axis=1)
+    fig = plot_match(df_match)
     fig.show()
     
 

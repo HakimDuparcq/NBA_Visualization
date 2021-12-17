@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import pickle
+import csv
 
 import pycountry
 from pycountry_convert import country_alpha3_to_country_alpha2, country_alpha2_to_country_name
@@ -109,6 +110,137 @@ def merge_all_datasets(list_of_df, key='PLAYER', name='df_players_merged'):
 
 #################################################################################################################################
 #                                                                                                                               #
+#                                                   PROCESS MATCH DATASET                                                       #
+#                                                                                                                               #
+#################################################################################################################################
+
+def process_match(file):
+    DATA=[]
+    EQUIPES=[]
+    SCORES=[]
+    SCOREnbWIN=[]
+    ANNE=[]
+
+    dic={
+        'Année' : [],
+        'Equipes' : [],
+        'SCOREnbWIN': []
+    }
+
+    f= open(file,'r')
+    myReader = csv.reader(f)
+
+    for row in myReader:
+        DATA.append(row)
+    ##c = 0
+    ##w = 0
+    ##
+    ##    if row[1][:4] == "2009" and (row[2] == 'Cavaliers' or row[3] == 'Cavaliers'):
+    ##        if row[2] == 'Cavaliers' and row[4] > row[5]:
+    ##            w += 1
+    ##        if row[3] == 'Cavaliers' and row[5] > row[4]:
+    ##            w += 1
+    ##        c += 1
+    ##        
+    ##print(c,w)  # 107, 58
+    ##input()
+
+    def Trie(i):
+        if DATA[i][2] not in EQUIPES:
+            EQUIPES.append(DATA[i][2])
+            SCORES.append([])
+            if int(DATA[i][4])>int(DATA[i][5]):
+                SCORES[len(SCORES)-1].append("W")
+            else:
+                SCORES[len(SCORES)-1].append("L")
+        else:
+            if int(DATA[i][4])>int(DATA[i][5]):
+                SCORES[EQUIPES.index(DATA[i][2])].append("W")
+            else:
+                SCORES[EQUIPES.index(DATA[i][2])].append("L")
+
+        if DATA[i][3] not in EQUIPES:
+            EQUIPES.append(DATA[i][3])
+            SCORES.append([])
+            if int(DATA[i][4])<int(DATA[i][5]):
+                SCORES[len(SCORES)-1].append("W")
+            else:
+                SCORES[len(SCORES)-1].append("L")
+        else:
+            if int(DATA[i][4])<int(DATA[i][5]):
+                SCORES[EQUIPES.index(DATA[i][3])].append("W")
+            else:
+                SCORES[EQUIPES.index(DATA[i][3])].append("L")
+
+
+    def MakeRatio():
+        for i in range (len(SCORES)):
+            compteur=0
+            for ii in range (len(SCORES[i])):
+                if SCORES[i][ii]=='W':
+                    compteur+=1
+
+            SCOREnbWIN.append(round(compteur/len(SCORES[i])*100,2))
+
+    ##
+    AnneActuel=DATA[1][1][0] + DATA[1][1][1] + DATA[1][1][2] +DATA[1][1][3]
+    dic['Année'].append(AnneActuel)
+    for i in range (1,len(DATA)):
+        if "None" not in DATA[i]:
+            if (DATA[i][1][0] + DATA[i][1][1] + DATA[i][1][2] +DATA[i][1][3]!=AnneActuel):
+                MakeRatio()
+
+                dic['Année'].append(DATA[i][1][0] + DATA[i][1][1] + DATA[i][1][2] +DATA[i][1][3])
+                dic['Equipes'].append(EQUIPES)
+                dic['SCOREnbWIN'].append(SCOREnbWIN)
+
+
+                ANNE.append(DATA[i][1][0] + DATA[i][1][1] + DATA[i][1][2] +DATA[i][1][3])
+
+                EQUIPES=[]
+                SCOREnbWIN=[]
+                SCORES=[]
+                AnneActuel=DATA[i][1][0] + DATA[i][1][1] + DATA[i][1][2] +DATA[i][1][3]
+
+
+            Trie(i)
+
+    EquipeScoreAnne=[]
+    EquipeSauv=[]
+
+    equipeactuel=""
+
+    ar = []
+
+    for i in range (len(dic['Equipes'])):
+        for ii in range (len(dic['Equipes'][i])):#dic['Equipes'][i][ii])
+            if dic['Equipes'][i][ii] not in EquipeSauv:
+                EquipeSauv.append(dic['Equipes'][i][ii])
+                equipeactuel=dic['Equipes'][i][ii]
+
+                for iii in range (len(dic['Equipes'])):
+                    if equipeactuel in dic['Equipes'][iii]:
+                        pos=dic['Equipes'][iii].index(equipeactuel)
+                        EquipeScoreAnne.append( dic['SCOREnbWIN'][iii][pos])
+                    else:
+                        EquipeScoreAnne.append(-1)
+
+                ar.append(EquipeScoreAnne)
+                EquipeScoreAnne=[]
+
+    df = pd.DataFrame(ar)
+    df = df.transpose()
+    df.columns = EquipeSauv
+
+    df.to_csv('datasets/df_matchs.csv')
+
+    return df
+
+
+
+
+#################################################################################################################################
+#                                                                                                                               #
 #                                                               MAIN                                                            #
 #                                                                                                                               #
 #################################################################################################################################
@@ -145,6 +277,10 @@ if __name__ == '__main__':
 
     df = pd.read_csv('datasets/df_teams_merged.csv').drop(["Unnamed: 0"], axis=1)
     df = process_data_teams(df)
+
+
+    ### Processing Matchs data ###
+    process_match("datasets/ScoreEquipeNBA.csv")
 
 
 
