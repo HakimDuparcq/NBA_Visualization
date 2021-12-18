@@ -4,6 +4,9 @@ from selenium import webdriver
 import codecs
 
 
+
+
+
 def show(html, file='test.html'):
     """Créer un fichier html contenant le code html, utile pour verifier ce que contient le code"""
     file = codecs.open(file, "w", "utf-8")
@@ -104,7 +107,7 @@ if __name__ == '__main__':
 
     selector_dic_players_usage = {}
     selector_dic_players_usage['url'] = "https://www.nba.com/stats/players/usage/?sort=GP&dir=-1"
-    selector_dic_players_usage['name'] = "stats_players_usage"
+    selector_dic_players_usage['name'] = "stats_players_usage__"
     selector_dic_players_usage['player'] = "first"
     selector_dic_players_usage['nb pages'] = 10
 
@@ -133,7 +136,6 @@ if __name__ == '__main__':
     # Print dataframe
     print(df)
 
-    return
 
     
 
