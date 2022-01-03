@@ -1,10 +1,6 @@
 import time
 import pandas as pd
 import numpy as np
-import pickle
-from scipy import stats
-import scipy
-from itertools import cycle
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -20,23 +16,6 @@ from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LinearRegression
 
 
-def palette():
-    # Palette
-    p1 = ['#000000', '#1d4289', '#f5f6f1', '#c7102e']
-    p2 = ['#000000', '#542583', '#fea500', '#6e518c', '#fdc42f', '#8a6bad', '#acacac', '#f4f3eb']
-    p3 = ['#000000', '#98012e', '#f7a21e', '#f5f6f1']
-    p4 = ['#0a223e', '#2a5134', '#edae56', '#f5f6f1']
-    p5 = ['#000000', '#007932', '#ad3535', '#f5f6f1']
-    p6 = ['#1e1160', '#e5601f', '#f8a019', '#f5f6f1']
-    p7 = ['#071e3e', '#b4b0b2', '#fdbb2f', '#f5f6f1']
-    p8 = ['#000000', '#5d6571', '#5b2b81', '#f5f6f1']
-    names = ['NBA','Los-Angeles Lakers','Miami Heat','Utah Jazz','Boston Celtics','Phoenix suns','Indiana Pacers','Sacramento Kings']
-
-    sns.palplot(p2)
-    plt.title('Los-Angeles Lakers palette',loc='left',fontfamily='serif',fontsize=15,y=1.2)
-    plt.show()
-    return p2
-    
     
 #################################################################################################################################
 #                                                                                                                               #
@@ -197,8 +176,6 @@ def players_comparaison(df, players=[]):
           visible=True,
           range=[0, 1]
         )),
-      xlegend=1,
-      ylegend=1,
       showlegend=True,
       title='Player comparison'
     )
@@ -256,7 +233,6 @@ def pts3(df):
     df['best_worst'] = (scored-attempted*regression.coef_)
     df=df.sort_values(by=['best_worst'])
 
-    print(regression.coef_)
     df['best_worst'][:5]=-100 #set the five worst to -1
     df['best_worst'][-5:]=100 #set the five best to 1
     df['best_worst'][5:-5]=0 #set the other to 0
@@ -288,6 +264,22 @@ def pca_plot(df):
                      color="rank",
                      hover_name="PLAYER",
                      title="Players' statistics")
+
+    #fig.layout.paper_bgcolor = '#FFFFFF'
+    #fig.layout.plot_bgcolor = '#FFFFFF'
+    return fig
+
+def pca_plot_teams(df):
+    pca = make_pipeline(StandardScaler(), PCA(n_components=2))
+    
+    x = df[[i for i in df.columns if i not in ['TEAM', 'GP', 'W', 'L']]]
+
+    x = list(pca.fit_transform(np.array(x)))
+    df['rank'] = df.index
+    fig = px.scatter(df, x=[i[0] for i in x], y=[i[1] for i in x],
+                     color="rank",
+                     hover_name="TEAM",
+                     title="Teams' statistics")
 
     #fig.layout.paper_bgcolor = '#FFFFFF'
     #fig.layout.plot_bgcolor = '#FFFFFF'
@@ -334,25 +326,28 @@ if __name__ == '__main__':
 
     df = pd.read_csv('datasets/df_players_merged.csv').drop(["Unnamed: 0"], axis=1)
 
-    #palette()
 
-##    fig = pca_plot(df)
-##    fig.show()
+    fig = pca_plot(df)
+    fig.show()
     fig = plot_taille_poids(df)
     fig.show()
-##    fig = map_plot(df)
-##    fig.show()
-##    fig = plot_type_paniers(df)
-##    fig.show()
-##    fig = taille_distribution(df)
-##    fig.show()
-##    fig = pts2(df)
-##    fig.show()
-##    fig = pts3(df)
-##    fig.show()    
-##    print(df[['PLAYER','PDV']][:10])
-##    fig = players_comparaison(df, players=['Kevin Durant', 'Stephen Curry','Trae Young'])
-##    fig.show()
+    fig = map_plot(df)
+    fig.show()
+    fig = plot_type_paniers(df)
+    fig.show()
+    fig = taille_distribution(df)
+    fig.show()
+    fig = pts2(df)
+    fig.show()
+    fig = pts3(df)
+    fig.show()    
+    fig = players_comparaison(df, players=['Kevin Durant', 'Stephen Curry'])
+    fig.show()
+
+    df_teams = pd.read_csv('datasets/df_teams_merged.csv').drop(["Unnamed: 0"], axis=1)
+    print(df_teams.dtypes)
+    fig = pca_plot_teams(df_teams)
+    fig.show()
 
     df_match = pd.read_csv('datasets/df_matchs.csv').drop(["Unnamed: 0"], axis=1)
     fig = plot_match(df_match)

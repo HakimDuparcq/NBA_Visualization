@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
-import pickle
 import csv
-
 import pycountry
 from pycountry_convert import country_alpha3_to_country_alpha2, country_alpha2_to_country_name
 
@@ -132,18 +130,6 @@ def process_match(file):
 
     for row in myReader:
         DATA.append(row)
-    ##c = 0
-    ##w = 0
-    ##
-    ##    if row[1][:4] == "2009" and (row[2] == 'Cavaliers' or row[3] == 'Cavaliers'):
-    ##        if row[2] == 'Cavaliers' and row[4] > row[5]:
-    ##            w += 1
-    ##        if row[3] == 'Cavaliers' and row[5] > row[4]:
-    ##            w += 1
-    ##        c += 1
-    ##        
-    ##print(c,w)  # 107, 58
-    ##input()
 
     def Trie(i):
         if DATA[i][2] not in EQUIPES:
@@ -260,6 +246,7 @@ if __name__ == '__main__':
     list_of_df = [dfp1, dfp2, dfp3, dfp4, dfp_a]
     df_to_rule_them_all = merge_all_datasets(list_of_df, key='PLAYER', name='df_players_merged')
 
+
     ### Merging teams datasets ###
     dft1 = pd.read_csv("datasets/stats_teams_trad.csv").drop(["Unnamed: 0"], axis=1)
     dft2 = pd.read_csv("datasets/stats_teams_advanced.csv").drop(["Unnamed: 0"], axis=1)
@@ -277,6 +264,8 @@ if __name__ == '__main__':
 
     df = pd.read_csv('datasets/df_teams_merged.csv').drop(["Unnamed: 0"], axis=1)
     df = process_data_teams(df)
+    df.to_csv('datasets/df_teams_merged.csv')
+    df.to_excel('datasets/df_teams_merged.xlsx')
 
 
     ### Processing Matchs data ###
